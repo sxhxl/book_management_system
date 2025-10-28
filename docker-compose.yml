@@ -7,8 +7,11 @@ services:
       - DATABASE_URL=postgresql+asyncpg://postgres:password@db:5432/bookdb
       - JWT_SECRET_KEY=supersecretkey
     depends_on:
-      - db
-      - ollama
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
 
   db:
     image: postgres:16
@@ -20,6 +23,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   ollama:
     image: ollama/ollama
@@ -27,7 +35,19 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    entrypoint: ["sh", "-c", "ollama serve & sleep 10 && ollama pull llama3:8b && tail -f /dev/null"]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 10s
+      retries: 60
+      start_period: 20s
+    entrypoint: |
+      sh -c "
+      ollama serve &
+      sleep 10 &&
+      ollama pull llama3:8b &&
+      tail -f /dev/null
+      "
 
 volumes:
   postgres_data:

@@ -1,3 +1,4 @@
+from typing import List, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func
@@ -48,3 +49,11 @@ async def delete_book(db: AsyncSession, book_id: int, role: str):
     await db.delete(db_book)
     await db.commit()
     return {"detail": "Deleted"}
+
+
+async def get_recommendations(db: AsyncSession, genres: List[str]) -> List[Book]:
+    """Recommend books by genre"""
+    result = await db.execute(
+        select(Book).where(Book.genre.in_(genres))
+    )
+    return result.scalars().all()
